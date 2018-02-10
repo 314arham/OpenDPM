@@ -3,9 +3,6 @@ import numpy as np
 import scipy as sp
 
 #DPM Hard sphere approach event driven                             #Based on B.P.B Hoomans et al. 1995
-#def Dot(x, y):
-#    x, y = np.array(x), np.array(y)
-#    return sum(x*y)
 
 def Minimum(a):
     return [[i for i in range(len(a)) if a[i]==min(a)][0], min(a)]
