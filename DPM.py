@@ -15,11 +15,12 @@ def Rotate(vector, theta):
     return np.array([x*m.cos(theta) - y*m.sin(theta), x*m.sin(theta) + y*m.cos(theta)])
 
 class particle:
-    def __init__(self, X, Y, Radius=0.1, velocityVector=[0, 0], Omega=0, Mass=0.1, Cube=[10, 10, 10]):
+    def __init__(self, X, Y, Radius=0.1, velocityVector=[0, 0], Omega=0, density=2600, Cube=[10, 10, 10]):
         self.r, self.x, self.y = Radius, X, Y
         [self.u, self.v] = velocityVector
         self.velocityVector = velocityVector
-        self.M = Mass
+        self.vol = sp.pi*(4/3)*self.r**3
+        self.M = density*self.vol
         self.I = 0.4*self.M*self.r**2
         self.eps_w = 0.8
         self.eps_p = 0.8
@@ -30,7 +31,7 @@ class particle:
     def move(self, dt):
         self.x += self.u*dt
         self.y += self.v*dt
-    def dist(self):
+    def distanceFromWall(self):
         d = []
         U = [-self.u, self.u, -self.v, self.v]
         D = [self.x, -self.x+self.cube[0], self.y, -self.y+self.cube[1]]
@@ -79,7 +80,7 @@ class solidPhase:
                 self.p.append(particle(i, j, Radius))
         self.p = np.array(self.p)
         self.numberOfParticles = len(self.p)
-    def arrayLattice(self, Mapping=[3, 3, 1], velocitySeeds=[2, -2], OmegaSeed=0, Rlims=[0.6, 0.2], Cube=[10, 10, 10]):
+    def arrayLattice(self, Mapping=[3, 3, 1], Rho = 2600, velocitySeeds=[2, -2], OmegaSeed=0, Rlims=[0.6, 0.2], Cube=[10, 10, 10]):
         R = sum(Rlims)
         self.p = []
         self.p = np.array([particle(X = i, 
@@ -88,7 +89,7 @@ class solidPhase:
                                     velocityVector = np.array([sp.rand()*velocitySeeds[0]-velocitySeeds[0]/2, 
                                                                sp.rand()*velocitySeeds[1]-velocitySeeds[1]/2]), 
                                     Omega = 0, 
-                                    Mass = 1, 
+                                    density = Rho, 
                                     Cube = Cube) 
                                     for i in np.linspace(R, Cube[0]-R, Mapping[0]) 
                                     for j in np.linspace(R, Cube[1]-R, Mapping[1])])
@@ -114,7 +115,7 @@ class solidPhase:
                     collisionTimesList += [[self.p[i], self.p[j], np.true_divide(A-m.sqrt(abs(Delta)), B)]]
                 else:
                     collisionTimesList += [[i, j, np.inf]]
-        wallCollisionList = [[i, i.dist()[0], i.dist()[1]] for i in self.p]
+        wallCollisionList = [[i, i.distanceFromWall()[0], i.distanceFromWall()[1]] for i in self.p]
         return collisionTimesList + wallCollisionList
     def run(self, TIME=5):
         n = self.numberOfParticles
@@ -129,7 +130,7 @@ class solidPhase:
             collisionTimes = [t[2] for t in collisionList]                                   #Extrcting collision times from collisionList
             minimumCollisionData = Minimum(collisionTimes)                                   #Find minimum collision time in collision list. minimumCollisionData = [number of element in array, element itself]
             [primary, secondary, tab] = collisionList[minimumCollisionData[0]]               ### locate minimum collision time "tab"
-            acctim += ROUNDOFF_ERROR_CORECTION*tab                                           ### increment acctim by tab
+            acctim += ROUNDOFF_ERROR_CORECTION*tab                                                               ### increment acctim by tab
             while acctim < DT:
                 for particles in self.p: particles.move(ROUNDOFF_ERROR_CORECTION*tab)
                 x = primary.collisionDynamics(secondary)                                     ### collision dynamics
@@ -137,13 +138,13 @@ class solidPhase:
                 collisionTimes = [t[2] for t in collisionList]
                 minimumCollisionData = Minimum(collisionTimes)
                 [primary, secondary, tab] = collisionList[minimumCollisionData[0]]           ### locate minimum collision time
-                acctim += ROUNDOFF_ERROR_CORECTION*tab                                       ### increment acctim by tab
+                acctim += ROUNDOFF_ERROR_CORECTION*tab                                                           ### increment acctim by tab
             for particles in self.p: particles.move(DT - (acctim - ROUNDOFF_ERROR_CORECTION*tab))
             self.gravity(DT)
             Time += DT
             if timeStep % dataStepSize == 0:                                                 ### Write the output data in *.csv files, by a given timeStep
                 file = open('F:/CSV/N/P.csv.'+
-                            str(timeStep//dataStepSize), mode='w')                           # Change the address #
+                            str(timeStep//dataStepSize), mode='w')
                 file.write('h,x,z,d,Time\n')                                                 ### Order of variables in file Height, x, z=0, diameter, time. z is given so visualization in Paraview will have a better quality
                 for i in range(n):
                     file.write(str(round(self.p[i].y, 3))+','+
